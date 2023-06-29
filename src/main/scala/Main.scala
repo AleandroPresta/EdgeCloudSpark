@@ -72,5 +72,7 @@ object Main {
     )
 
     sc.stop()
+
+    println("Hello world!")
   }
 }
