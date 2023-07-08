@@ -3,8 +3,6 @@ package com.example
 import org.apache.spark.scheduler.{SparkListener, SparkListenerJobStart, SparkListenerTaskStart}
 import org.apache.spark.{SparkConf, SparkContext}
 
-import scala.collection.mutable.ListBuffer
-
 class TaskStartListener extends SparkListener {
   override def onTaskStart(taskStart: SparkListenerTaskStart): Unit = {
     val taskInfo = taskStart.taskInfo
@@ -19,60 +17,48 @@ class TaskStartListener extends SparkListener {
   }
 }
 
-object Main {
+case object Main {
   def main(args: Array[String]): Unit = {
-
-    val edgeNodes: Seq[String] = Seq("172.18.0.3", "172.18.0.4", "172.18.0.5")
-    val cloudNodes: Seq[String] = Seq("172.18.0.6", "172.18.0.7", "172.18.0.8")
 
     // Limiting the core usage to two, this wat we have better data and task distribution
     val conf = new SparkConf()
-      .setAppName("Thread Refactoring Example")
-      .set("spark.locality.wait", "900000").set("spark.executors.cores", "2")
+      .setAppName("Read HDFS Example")
+      .setMaster("spark://spark-master:7077")
+      //.setMaster("local")
+      .set("spark.locality.wait", "900000")
+      .set("spark.executors.cores", "1")
     val sc = new SparkContext(conf)
-
-    // Si usa uno spark listener per tracciare il lavoro di spark
     sc.addSparkListener(new TaskStartListener())
 
-    // Fase edge, import dei dati
-    val edgeDirectory = "/home/aleandro/IdeaProjects/EdgeCloudSpark/src/main/scala/data"
-    val edgeLines: Array[Array[Int]] = DirectoryImporter.import_directory(directoryPath = edgeDirectory)
+    val hdfs_ip = args(0)
+    val hdfs_prefix = "hdfs://" + hdfs_ip + ":9000"
 
-    // Inizializza, fa partire e aspetta la fine dei thread
-    val edgeThreads = ListBuffer.empty[EdgeThread]
+    val edgeNodes: Seq[String] = Seq("172.19.0.5", "172.19.0.6", "172.19.0.7")
+    val cloudNodes: Seq[String] = Seq("172.19.0.8", "172.19.0.9", "172.19.0.10")
 
-    for (i <- edgeLines.indices) {
-      edgeThreads += new EdgeThread(sc = sc, edgeLines(i), edgeNodes, index = i)
-    }
+    println(s"\nReading data from HDFS at $hdfs_prefix\n")
+    val lines = sc.textFile(hdfs_prefix + "/user/aleandro961/ECS/data/data6.txt")
 
-    edgeThreads.foreach(
-      thread => thread.start()
-    )
+    // Questa operazione avviene su dei nodi, su quale nodo deve avvenire?
+    val inputData: Array[Int] = lines.collect().map(_.toInt)
 
-    edgeThreads.foreach(
-      thread => thread.join()
-    )
+    println("\ninputData sample: " + inputData.take(5).mkString(", ") + "\n")
 
-    // Fase Cloud
-    val cloudDirectory = "/home/aleandro/IdeaProjects/EdgeCloudSpark/src/main/scala/out"
-    val cloudLines: Array[Array[Int]] = DirectoryImporter.import_directory(directoryPath = cloudDirectory)
+    val edgeThread = new EdgeThread(sc = sc, data = inputData, nodes = edgeNodes)
+    edgeThread.start()
+    edgeThread.join()
 
-    val cloudThreads = ListBuffer.empty[CloudThread]
+    val cloudData = edgeThread.results
+    println("\nResult sample of the edge phase " + cloudData.take(5).mkString(", "))
 
-    for (i <- cloudLines.indices) {
-      cloudThreads += new CloudThread(sc = sc, cloudLines(i), cloudNodes, index = i)
-    }
+    val cloudThread = new CloudThread(sc = sc, data = cloudData, nodes = cloudNodes)
+    cloudThread.start()
+    cloudThread.join()
 
-    cloudThreads.foreach(
-      thread => thread.start()
-    )
+    val cloudResults = cloudThread.results
+    println("\nResult sample of the cloud phase " + cloudResults.take(5).mkString(", "))
 
-    cloudThreads.foreach(
-      thread => thread.join()
-    )
+    println("\nDone\n")
 
-    sc.stop()
-
-    println("Hello world!")
   }
 }
