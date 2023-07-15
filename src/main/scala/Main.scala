@@ -27,6 +27,8 @@ case object Main {
       //.setMaster("local")
       .set("spark.locality.wait", "900000")
       .set("spark.executors.cores", "1")
+      .set("spark.hadoop.dfs.replication", "3")
+      .set("spark.hadoop.dfs.block.size", "1048576")
     val sc = new SparkContext(conf)
     sc.addSparkListener(new TaskStartListener())
 
@@ -37,18 +39,18 @@ case object Main {
     val cloudNodes: Seq[String] = Seq("172.19.0.8", "172.19.0.9", "172.19.0.10")
 
     println(s"\nReading data from HDFS at $hdfs_prefix\n")
-    val lines = sc.textFile(hdfs_prefix + "/user/aleandro961/ECS/data/data6.txt")
+    val lines = sc.textFile(hdfs_prefix + "/EdgeCloud/data2.txt").coalesce(args(1).toInt)
+
+    val numPartitions = lines.getNumPartitions
+    println(s"\nnumPartitions: $numPartitions\n")
 
     // Questa operazione avviene su dei nodi, su quale nodo deve avvenire?
-    val inputData: Array[Int] = lines.collect().map(_.toInt)
 
-    println("\ninputData sample: " + inputData.take(5).mkString(", ") + "\n")
-
-    val edgeThread = new EdgeThread(sc = sc, data = inputData, nodes = edgeNodes)
+    val edgeThread = new EdgeThread(sc = sc, data = lines, nodes = edgeNodes)
     edgeThread.start()
     edgeThread.join()
 
-    val cloudData = edgeThread.results
+    /* val cloudData = edgeThread.results
     println("\nResult sample of the edge phase " + cloudData.take(5).mkString(", "))
 
     val cloudThread = new CloudThread(sc = sc, data = cloudData, nodes = cloudNodes)
@@ -57,6 +59,7 @@ case object Main {
 
     val cloudResults = cloudThread.results
     println("\nResult sample of the cloud phase " + cloudResults.take(5).mkString(", "))
+    */
 
     println("\nDone\n")
 

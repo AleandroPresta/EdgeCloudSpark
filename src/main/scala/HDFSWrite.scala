@@ -9,6 +9,8 @@ case object HDFSWrite {
     val conf = new SparkConf()
       .setAppName("Write HDFS Example")
       .setMaster("local")
+      .set("spark.hadoop.dfs.replication", "3")
+      .set("spark.hadoop.dfs.block.size", "1048576")
       //.setMaster("spark://spark-master:7077")
       //.set("spark.locality.wait", "900000")
       //.set("spark.executors.cores", "2")
@@ -16,13 +18,13 @@ case object HDFSWrite {
 
     println("\nWriting\n")
 
-    val prefix = "hdfs://172.19.0.3:9000"
+    val prefix = "hdfs://172.19.0.4:9000"
 
     conf.set("fs.defaultFS", prefix)
 
     try {
-      val numbersRdd1 = sc.parallelize((1 to 10000).toList)
-      numbersRdd1.saveAsTextFile(prefix + "/user/aleandro961/ECS/data/data6.txt")
+      val numbersRdd1 = sc.parallelize((1 to 10000000).toList)
+      numbersRdd1.saveAsTextFile(prefix + "/EdgeCloud/data2.txt")
       println(s"RDD class: ${numbersRdd1.getClass}")
     } catch {
       case ex: org.apache.hadoop.mapred.FileAlreadyExistsException =>

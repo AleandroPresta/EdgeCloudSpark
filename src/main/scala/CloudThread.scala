@@ -22,7 +22,7 @@ class CloudThread(sc: SparkContext, data: Array[Int], nodes: Seq[String]) extend
     val info = statusTracker.getJobInfo(0)
     println(s"\n${info.mkString(", ")}")
 
-    println(s"\nPrinting preferred locations of RDD\n")
+    println(s"\nPrinting preferred locations of RDD")
     for (partitionId <- 0 until numSplits) {
       val preferredLocations = rdd.preferredLocations(rdd.partitions(partitionId))
       val p_id_print = partitionId + 1 //è necessario incrementare di 1 il partitionID per stampare il numero corretto
