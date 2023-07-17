@@ -9,8 +9,6 @@ class EdgeThread(sc: SparkContext, data: RDD[String], nodes: Seq[String]) extend
 
   override def run(): Unit = {
 
-    println("\n---------- Edge Thread Start ----------")
-
     val inputData: Array[Int] = data.collect().map(_.toInt)
 
     println("\ninputData sample: " + inputData.take(5).mkString(", ") + "\n")
@@ -18,7 +16,7 @@ class EdgeThread(sc: SparkContext, data: RDD[String], nodes: Seq[String]) extend
     val tuple: (Array[Int], Seq[String]) = (inputData, nodes)
     val sequence: Seq[(Array[Int], Seq[String])] = Seq(tuple)
 
-    val rdd = sc.makeRDD(sequence).coalesce(3)
+    val rdd = sc.makeRDD(sequence)
 
     val numSplits = rdd.getNumPartitions
 
@@ -35,11 +33,11 @@ class EdgeThread(sc: SparkContext, data: RDD[String], nodes: Seq[String]) extend
     }
 
     // Operazione Edge
-    val map_result = rdd.map(
+    val mapResult = rdd.map(
       array => array.map(_ + 1)
     )
 
-    val dataArray = map_result.collect()
+    val dataArray = mapResult.collect()
 
     dataArray.foreach(
       array => array.foreach(

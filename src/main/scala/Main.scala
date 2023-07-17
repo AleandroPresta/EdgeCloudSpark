@@ -32,14 +32,14 @@ case object Main {
     val sc = new SparkContext(conf)
     sc.addSparkListener(new TaskStartListener())
 
-    val hdfs_ip = args(0)
-    val hdfs_prefix = "hdfs://" + hdfs_ip + ":9000"
+    val hdfsIp = args(0)
+    val hdfsPrefix = "hdfs://" + hdfsIp + ":9000"
 
     val edgeNodes: Seq[String] = Seq("172.19.0.5", "172.19.0.6", "172.19.0.7")
     val cloudNodes: Seq[String] = Seq("172.19.0.8", "172.19.0.9", "172.19.0.10")
 
-    println(s"\nReading data from HDFS at $hdfs_prefix\n")
-    val lines = sc.textFile(hdfs_prefix + "/EdgeCloud/data2.txt").coalesce(args(1).toInt)
+    println(s"\nReading data from HDFS at $hdfsPrefix\n")
+    val lines = sc.textFile(hdfsPrefix + "/EdgeCloud/data2.txt").coalesce(args(1).toInt)
 
     val numPartitions = lines.getNumPartitions
     println(s"\nnumPartitions: $numPartitions\n")
