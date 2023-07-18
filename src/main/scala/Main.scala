@@ -39,7 +39,7 @@ case object Main {
     val cloudNodes: Seq[String] = Seq("172.19.0.8", "172.19.0.9", "172.19.0.10")
 
     println(s"\nReading data from HDFS at $hdfsPrefix\n")
-    val lines = sc.textFile(hdfsPrefix + "/EdgeCloud/data2.txt").coalesce(args(1).toInt)
+    val lines = sc.textFile(hdfsPrefix + "/EdgeCloud/data1.txt")
 
     val numPartitions = lines.getNumPartitions
     println(s"\nnumPartitions: $numPartitions\n")
