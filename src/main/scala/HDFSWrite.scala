@@ -26,7 +26,7 @@ case object HDFSWrite {
 
     try {
 
-      val size = 1000
+      val size = 5
       val points = Utils.generateData(size);
 
       println("Data sample:")
