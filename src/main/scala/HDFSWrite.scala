@@ -54,6 +54,7 @@ case object HDFSWrite {
       case ex: org.apache.hadoop.mapred.FileAlreadyExistsException =>
         println("File1 already exists!")
     }
+  }
 
     def generateData(): ListBuffer[(Double, Double)] = {
       val list = ListBuffer[(Double, Double)]()
@@ -79,7 +80,5 @@ case object HDFSWrite {
 
       fs
     }
-
-  }
 
 }
