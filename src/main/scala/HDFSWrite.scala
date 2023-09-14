@@ -25,60 +25,69 @@ case object HDFSWrite {
 
     try {
 
-      val list = generateData();
+      val points = generateData();
 
       println("Data sample:")
-      println(list.take(5).mkString(", "))
+      println(points.take(5).mkString(", "))
 
       val hdfsIp = "hdfs://172.28.1.2:8020"
       val replicationFactor = 3
       val fs = setUpHDFS(hdfsIp, replicationFactor)
 
-      val outputPath = hdfsIp + "/user/aleandro/edgeData2.txt"
+      val fileName = "points.txt"
+      val userName = "aleandro"
+      saveFile(points = points, fs = fs, hdfsIp = hdfsIp, fileName = fileName, userName = userName)
 
-      // Create a path object for the output file
-      val outputPathObj = new Path(outputPath)
-
-      // Create an output stream for the output file
-      val outputStream = fs.create(outputPathObj)
-
-      println("Saving array")
-      // Iterate over the array and write each element to the output stream
-      for (element <- list) {
-        outputStream.writeBytes(element.toString)
-        outputStream.writeBytes("\n") // Add a new line after each element
-      }
-      // Close the output stream
-      outputStream.close()
     } catch {
       case ex: org.apache.hadoop.mapred.FileAlreadyExistsException =>
         println("File1 already exists!")
     }
+
   }
 
-    def generateData(): ListBuffer[(Double, Double)] = {
-      val list = ListBuffer[(Double, Double)]()
-      val rand = new Random()
-      for (_ <- 1 to 10000) {
-        val x = rand.nextDouble()
-        val y = rand.nextDouble()
-        list += ((x, y))
-      }
-      list
+  private def generateData(): ListBuffer[(Double, Double)] = {
+    val list = ListBuffer[(Double, Double)]()
+    val rand = new Random()
+    for (_ <- 1 to 10000) {
+      val x = rand.nextDouble()
+      val y = rand.nextDouble()
+      list += ((x, y))
     }
+    list
+  }
 
-    def setUpHDFS(hdfsIp: String, replicationFactor: Int) = {
-      // Setting HDFS
-      val conf = new Configuration()
+  private def setUpHDFS(hdfsIp: String, replicationFactor: Int) = {
+    // Setting HDFS
+    val conf = new Configuration()
 
-      conf.set("fs.defaultFS", hdfsIp)
-      // Set the new replication factor in the configuration
-      conf.set("dfs.replication", replicationFactor.toString)
+    conf.set("fs.defaultFS", hdfsIp)
+    // Set the new replication factor in the configuration
+    conf.set("dfs.replication", replicationFactor.toString)
 
-      // Create a FileSystem object based on the configuration
-      val fs = FileSystem.get(conf)
+    // Create a FileSystem object based on the configuration
+    val fs = FileSystem.get(conf)
 
-      fs
+    fs
+  }
+
+  private def saveFile(points: ListBuffer[(Double, Double)], fs: FileSystem, hdfsIp: String, fileName: String, userName: String): Unit = {
+    val outputPath = hdfsIp + "/user/" + userName + "/" + fileName
+
+    // Create a path object for the output file
+    val outputPathObj = new Path(outputPath)
+
+    // Create an output stream for the output file
+    val outputStream = fs.create(outputPathObj)
+
+    println("Saving data")
+    // Iterate over the array and write each element to the output stream
+    for (element <- points) {
+      outputStream.writeBytes(element.toString)
+      outputStream.writeBytes("\n") // Add a new line after each element
     }
+    // Close the output stream
+    outputStream.close()
+
+  }
 
 }
