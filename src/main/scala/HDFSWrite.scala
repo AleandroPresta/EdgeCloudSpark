@@ -3,6 +3,7 @@ package com.example
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.{FileSystem, Path}
 import org.apache.spark.{SparkConf, SparkContext}
+import clustering.Utils
 
 import scala.collection.mutable.ListBuffer
 import scala.util.Random
@@ -25,12 +26,12 @@ case object HDFSWrite {
 
     try {
 
-      val points = generateData();
+      val points = Utils.generateData();
 
       println("Data sample:")
       println(points.take(5).mkString(", "))
 
-      val hdfsIp = "hdfs://172.28.1.2:8020"
+      /* val hdfsIp = "hdfs://172.28.1.2:8020"
       val replicationFactor = 3
       val fs = setUpHDFS(hdfsIp, replicationFactor)
 
@@ -41,19 +42,8 @@ case object HDFSWrite {
     } catch {
       case ex: org.apache.hadoop.mapred.FileAlreadyExistsException =>
         println("File1 already exists!")
-    }
+    */ }
 
-  }
-
-  private def generateData(): ListBuffer[(Double, Double)] = {
-    val list = ListBuffer[(Double, Double)]()
-    val rand = new Random()
-    for (_ <- 1 to 10000) {
-      val x = rand.nextDouble()
-      val y = rand.nextDouble()
-      list += ((x, y))
-    }
-    list
   }
 
   private def setUpHDFS(hdfsIp: String, replicationFactor: Int) = {
