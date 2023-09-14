@@ -22,44 +22,73 @@ case object Main {
 
     // Limiting the core usage to two, this wat we have better data and task distribution
     val conf = new SparkConf()
-      .setAppName("Read HDFS Example")
-      .setMaster("spark://spark-master:7077")
+      .setAppName("EdgeCloud Example with 3 edge workers and 1 cloud workers")
+      //.setMaster("spark://spark-master:7077")
       //.setMaster("local")
       .set("spark.locality.wait", "900000")
       .set("spark.executors.cores", "1")
-      .set("spark.hadoop.dfs.replication", "3")
+      .set("spark.hadoop.dfs.replication", "2")
       .set("spark.hadoop.dfs.block.size", "1048576")
     val sc = new SparkContext(conf)
     sc.addSparkListener(new TaskStartListener())
 
-    val hdfsIp = args(0)
-    val hdfsPrefix = "hdfs://" + hdfsIp + ":9000"
+    val hdfsIp = "172.28.1.2"
+    val hdfsPort = "8020"
+    val hdfsPrefix = "hdfs://" + hdfsIp + ":" + hdfsPort
 
-    val edgeNodes: Seq[String] = Seq("172.19.0.5", "172.19.0.6", "172.19.0.7")
-    val cloudNodes: Seq[String] = Seq("172.19.0.8", "172.19.0.9", "172.19.0.10")
-
+    println("\nEdge Phase\n")
     println(s"\nReading data from HDFS at $hdfsPrefix\n")
-    val lines = sc.textFile(hdfsPrefix + "/EdgeCloud/data1.txt")
+    val lines = sc.textFile(hdfsPrefix + "/user/aleandro/edgeData2.txt")
 
     val numPartitions = lines.getNumPartitions
     println(s"\nnumPartitions: $numPartitions\n")
 
-    // Questa operazione avviene su dei nodi, su quale nodo deve avvenire?
+    lines.map(_ + 1)
 
-    val edgeThread = new EdgeThread(sc = sc, data = lines, nodes = edgeNodes)
-    edgeThread.start()
-    edgeThread.join()
+    val edgeResults = lines.collect().map(_.toInt)
 
-    /* val cloudData = edgeThread.results
-    println("\nResult sample of the edge phase " + cloudData.take(5).mkString(", "))
+    println("\nCloud Phase\n")
+    val cloudNodes: Seq[String] = Seq("cloud-worker1")
+    val tuple: (Array[Int], Seq[String]) = (edgeResults, cloudNodes)
+    val sequence: Seq[(Array[Int], Seq[String])] = Seq(tuple)
 
-    val cloudThread = new CloudThread(sc = sc, data = cloudData, nodes = cloudNodes)
-    cloudThread.start()
-    cloudThread.join()
+    val rdd = sc.makeRDD(sequence)
 
-    val cloudResults = cloudThread.results
-    println("\nResult sample of the cloud phase " + cloudResults.take(5).mkString(", "))
-    */
+    val numSplits = rdd.getNumPartitions
+
+    // Stampare le info dei job di questo thread
+    val statusTracker = sc.statusTracker
+    val info = statusTracker.getJobInfo(0)
+    println(s"\n${info.mkString(", ")}")
+
+    println(s"\nPrinting preferred locations of RDD")
+    for (partitionId <- 0 until numSplits) {
+      val preferredLocations = rdd.preferredLocations(rdd.partitions(partitionId))
+      val p_id_print = partitionId + 1 //è necessario incrementare di 1 il partitionID per stampare il numero corretto
+      println(s"\nPartition $p_id_print / $numSplits, preferred locations: ${preferredLocations}\n")
+    }
+
+    // Operazione edge
+    val cloudResult = rdd.map(
+      array => array.map(_ - 3)
+    )
+
+    // Raccolta dei risultati
+    val cloudData = cloudResult.collect()
+
+    /*
+
+      Soluzione proposta
+
+      val hdfsCloudIp = "172.28.1.*"
+      val hdfsCloudPort = "8020"
+      val hdfsCloudPrefix = "hdfs://" + hdfsCloudIp + ":" + hdfsCloudPort
+
+      Scrivere edgeResults su HDFS Cloud
+
+      Eseguire le operazioni cloud
+
+     */
 
     println("\nDone\n")
 
