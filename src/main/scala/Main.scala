@@ -37,17 +37,24 @@ case object Main {
     val hdfsPrefix = "hdfs://" + hdfsIp + ":" + hdfsPort
 
     println("\nEdge Phase\n")
+
+    // Read from HDFS
     println(s"\nReading data from HDFS at $hdfsPrefix\n")
     val lines = sc.textFile(hdfsPrefix + "/user/aleandro/edgeData2.txt")
 
+    // Print the number of partitions
     val numPartitions = lines.getNumPartitions
     println(s"\nnumPartitions: $numPartitions\n")
 
+    // Perform Edge operations
     lines.map(_ + 1)
 
+    // Collect the results
     val edgeResults = lines.collect().map(_.toInt)
 
     println("\nCloud Phase\n")
+
+    // Create RDD with the results of the Edge phase but with the cloud node as preferred location
     val cloudNodes: Seq[String] = Seq("cloud-worker1")
     val tuple: (Array[Int], Seq[String]) = (edgeResults, cloudNodes)
     val sequence: Seq[(Array[Int], Seq[String])] = Seq(tuple)
@@ -56,11 +63,12 @@ case object Main {
 
     val numSplits = rdd.getNumPartitions
 
-    // Stampare le info dei job di questo thread
+    // Print job information
     val statusTracker = sc.statusTracker
     val info = statusTracker.getJobInfo(0)
     println(s"\n${info.mkString(", ")}")
 
+    // Print preferred locations
     println(s"\nPrinting preferred locations of RDD")
     for (partitionId <- 0 until numSplits) {
       val preferredLocations = rdd.preferredLocations(rdd.partitions(partitionId))
@@ -68,27 +76,13 @@ case object Main {
       println(s"\nPartition $p_id_print / $numSplits, preferred locations: ${preferredLocations}\n")
     }
 
-    // Operazione edge
+    // Cloud operations
     val cloudResult = rdd.map(
       array => array.map(_ - 3)
     )
 
-    // Raccolta dei risultati
+    // Collect the results
     val cloudData = cloudResult.collect()
-
-    /*
-
-      Soluzione proposta
-
-      val hdfsCloudIp = "172.28.1.*"
-      val hdfsCloudPort = "8020"
-      val hdfsCloudPrefix = "hdfs://" + hdfsCloudIp + ":" + hdfsCloudPort
-
-      Scrivere edgeResults su HDFS Cloud
-
-      Eseguire le operazioni cloud
-
-     */
 
     println("\nDone\n")
 
