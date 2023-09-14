@@ -5,6 +5,7 @@ import org.apache.hadoop.fs.{FileSystem, Path}
 import org.apache.spark.{SparkConf, SparkContext}
 
 import scala.collection.mutable.ListBuffer
+import scala.util.Random
 
 case object HDFSWrite {
   def main(args: Array[String]): Unit = {
@@ -23,28 +24,17 @@ case object HDFSWrite {
     println("\nWriting\n")
 
     try {
-      val list = ListBuffer[Int]()
-      val rand = new scala.util.Random()
-      for (_ <- 1 to 10000) {
-        val res0 = rand.nextInt()
-        list += res0
-      }
+
+      val list = generateData();
+
       println("Data sample:")
       println(list.take(5).mkString(", "))
-      val conf = new Configuration()
 
-      // Set the URI of the Hadoop cluster
-      val hdfs = "hdfs://172.28.1.2:8020"
-      val newReplicationFactor = 3
-      conf.set("fs.defaultFS", hdfs)
-      // Set the new replication factor in the configuration
-      conf.set("dfs.replication", newReplicationFactor.toString)
+      val hdfsIp = "hdfs://172.28.1.2:8020"
+      val replicationFactor = 3
+      val fs = setUpHDFS(hdfsIp, replicationFactor)
 
-
-      // Create a FileSystem object based on the configuration
-      val fs = FileSystem.get(conf)
-
-      val outputPath = hdfs + "/user/aleandro/edgeData2.txt"
+      val outputPath = hdfsIp + "/user/aleandro/edgeData2.txt"
 
       // Create a path object for the output file
       val outputPathObj = new Path(outputPath)
@@ -64,5 +54,32 @@ case object HDFSWrite {
       case ex: org.apache.hadoop.mapred.FileAlreadyExistsException =>
         println("File1 already exists!")
     }
+
+    def generateData(): ListBuffer[(Double, Double)] = {
+      val list = ListBuffer[(Double, Double)]()
+      val rand = new Random()
+      for (_ <- 1 to 10000) {
+        val x = rand.nextDouble()
+        val y = rand.nextDouble()
+        list += ((x, y))
+      }
+      list
+    }
+
+    def setUpHDFS(hdfsIp: String, replicationFactor: Int) = {
+      // Setting HDFS
+      val conf = new Configuration()
+
+      conf.set("fs.defaultFS", hdfsIp)
+      // Set the new replication factor in the configuration
+      conf.set("dfs.replication", replicationFactor.toString)
+
+      // Create a FileSystem object based on the configuration
+      val fs = FileSystem.get(conf)
+
+      fs
+    }
+
   }
+
 }
