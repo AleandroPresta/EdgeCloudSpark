@@ -21,47 +21,54 @@ class TaskStartListener extends SparkListener {
 case object Main {
   def main(args: Array[String]): Unit = {
 
+    // Defining parameters
+    val hdfsIp = "172.28.1.2"
+    val hdfsPort = "8020"
+    val hdfsPrefix = "hdfs://" + hdfsIp + ":" + hdfsPort
+    val cloudNodes: Seq[String] = Seq("cloud-worker1")
+    val executorsCores = "1"
+    val dfsReplication = "2"
+    val userName = "aleandro"
+    val fileName = "edgeData2.txt"
+
+    // Print the parameters
+    println(s"hdfsIp: $hdfsIp")
+    println(s"hdfsPort: $hdfsPort")
+    println(s"hdfsPrefix: $hdfsPrefix")
+    println(s"cloudNodes: ${cloudNodes.mkString(", ")}")
+    println(s"executorsCores: $executorsCores")
+    println(s"dfsReplication: $dfsReplication")
+    println(s"userName: $userName")
+    println(s"fileName: $fileName")
+
     // Limiting the core usage to two, this wat we have better data and task distribution
     val conf = new SparkConf()
       .setAppName("EdgeCloud Example with 3 edge workers and 1 cloud workers")
       //.setMaster("spark://spark-master:7077")
       //.setMaster("local")
       .set("spark.locality.wait", "900000")
-      .set("spark.executors.cores", "1")
-      .set("spark.hadoop.dfs.replication", "2")
+      .set("spark.executors.cores", executorsCores)
+      .set("spark.hadoop.dfs.replication", dfsReplication)
       .set("spark.hadoop.dfs.block.size", "1048576")
     val sc = new SparkContext(conf)
     sc.addSparkListener(new TaskStartListener())
 
-    val hdfsIp = "172.28.1.2"
-    val hdfsPort = "8020"
-    val hdfsPrefix = "hdfs://" + hdfsIp + ":" + hdfsPort
-
     println("\nEdge Phase\n")
 
-    val userName = "aleandro"
-    val fileName = "edgeData2.txt"
     val data: RDD[String] = readFromHDFS(sc = sc, hdfsPrefix = hdfsPrefix, userName = userName, fileName = fileName)
 
     // Perform Edge operations
-    val edgeResults = edgePhase(data)
+    val edgeResults: Array[Int] = edgePhase(data)
 
     println("\nCloud Phase\n")
 
     // Create RDD with the results of the Edge phase but with the cloud node as preferred location
-    val cloudNodes: Seq[String] = Seq("cloud-worker1")
 
     val cloudRDD: RDD[Array[Int]] = createRDD(sc = sc, data = edgeResults, nodes = cloudNodes)
 
-    // Cloud operations
-    val cloudResult = cloudRDD.map(
-      array => array.map(_ - 3)
-    )
+    val cloudData: Array[Array[Int]] = cloudPhase(cloudRDD)
 
-    // Collect the results
-    val cloudData = cloudResult.collect()
-
-    println("\nDone\n")
+    println("\nFinish!\n")
 
   }
 
@@ -109,6 +116,18 @@ case object Main {
     }
 
     rdd
+  }
+
+  def cloudPhase(data: RDD[Array[Int]]) = {
+    // Cloud operations
+    val cloudResult = data.map(
+      array => array.map(_ - 3)
+    )
+
+    // Collect the results
+    val cloudData = cloudResult.collect()
+
+    cloudData
   }
 
 }
