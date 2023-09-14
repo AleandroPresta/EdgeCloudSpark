@@ -1,5 +1,6 @@
 package com.example
 
+import org.apache.spark.rdd.RDD
 import org.apache.spark.scheduler.{SparkListener, SparkListenerJobStart, SparkListenerTaskStart}
 import org.apache.spark.{SparkConf, SparkContext}
 
@@ -38,25 +39,56 @@ case object Main {
 
     println("\nEdge Phase\n")
 
-    // Read from HDFS
-    println(s"\nReading data from HDFS at $hdfsPrefix\n")
-    val lines = sc.textFile(hdfsPrefix + "/user/aleandro/edgeData2.txt")
-
-    // Print the number of partitions
-    val numPartitions = lines.getNumPartitions
-    println(s"\nnumPartitions: $numPartitions\n")
+    val userName = "aleandro"
+    val fileName = "edgeData2.txt"
+    val data: RDD[String] = readFromHDFS(sc = sc, hdfsPrefix = hdfsPrefix, userName = userName, fileName = fileName)
 
     // Perform Edge operations
-    lines.map(_ + 1)
-
-    // Collect the results
-    val edgeResults = lines.collect().map(_.toInt)
+    val edgeResults = edgePhase(data)
 
     println("\nCloud Phase\n")
 
     // Create RDD with the results of the Edge phase but with the cloud node as preferred location
     val cloudNodes: Seq[String] = Seq("cloud-worker1")
-    val tuple: (Array[Int], Seq[String]) = (edgeResults, cloudNodes)
+
+    val cloudRDD: RDD[Array[Int]] = createRDD(sc = sc, data = edgeResults, nodes = cloudNodes)
+
+    // Cloud operations
+    val cloudResult = cloudRDD.map(
+      array => array.map(_ - 3)
+    )
+
+    // Collect the results
+    val cloudData = cloudResult.collect()
+
+    println("\nDone\n")
+
+  }
+
+  def readFromHDFS(sc: SparkContext, hdfsPrefix: String, userName: String, fileName: String) = {
+    // Read from HDFS
+    println(s"\nReading data from HDFS at $hdfsPrefix\n")
+    val data = sc.textFile(hdfsPrefix + "/user/" + userName + "/" + fileName)
+
+    // Print the number of partitions
+    val numPartitions = data.getNumPartitions
+    println(s"\nnumPartitions: $numPartitions\n")
+
+    data
+  }
+
+  def edgePhase(data: RDD[String]) = {
+    data.map(_ + 1)
+
+    val edgeResults = data.collect().map(_.toInt)
+
+    edgeResults
+  }
+
+  def createRDD(sc: SparkContext, data: Array[Int], nodes: Seq[String]) = {
+
+    // Create RDD with preferred locations
+    val tuple: (Array[Int], Seq[String]) = (data, nodes)
     val sequence: Seq[(Array[Int], Seq[String])] = Seq(tuple)
 
     val rdd = sc.makeRDD(sequence)
@@ -76,15 +108,7 @@ case object Main {
       println(s"\nPartition $p_id_print / $numSplits, preferred locations: ${preferredLocations}\n")
     }
 
-    // Cloud operations
-    val cloudResult = rdd.map(
-      array => array.map(_ - 3)
-    )
-
-    // Collect the results
-    val cloudData = cloudResult.collect()
-
-    println("\nDone\n")
-
+    rdd
   }
+
 }

@@ -26,6 +26,7 @@ class KMeans(data: ListBuffer[(Double, Double)], k: Int, maxIterations: Int) {
   }
 
   // Assign each data point to the closest cluster centroid
+  // Edge Method
   def assignToClusters(): Unit = {
     for (i <- 0 until numDataPoints) {
       val point = data(i)
@@ -45,6 +46,7 @@ class KMeans(data: ListBuffer[(Double, Double)], k: Int, maxIterations: Int) {
   }
 
   // Update the centroids based on the mean of data points in each cluster
+  // Cloud method
   def updateCentroids(): Unit = {
     for (cluster <- 0 until k) {
       val clusterPoints = data.zip(clusters).collect { case (point, c) if c == cluster => point }

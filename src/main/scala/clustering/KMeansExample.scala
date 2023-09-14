@@ -1,8 +1,6 @@
 package com.example
 package clustering
 
-
-
 object KMeansExample {
   def main(args: Array[String]): Unit = {
 
