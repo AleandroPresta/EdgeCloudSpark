@@ -63,7 +63,6 @@ case object Main {
     println("\nCloud Phase\n")
 
     // Create RDD with the results of the Edge phase but with the cloud node as preferred location
-
     val cloudRDD: RDD[Array[Int]] = createRDD(sc = sc, data = edgeResults, nodes = cloudNodes)
 
     val cloudData: Array[Array[Int]] = cloudPhase(cloudRDD)

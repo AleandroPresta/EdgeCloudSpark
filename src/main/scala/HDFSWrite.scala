@@ -15,11 +15,9 @@ case object HDFSWrite {
     val conf = new SparkConf()
       .setAppName("Write HDFS Example")
       .setMaster("local")
+      //.setMaster("spark://spark-master:7077")
       .set("spark.hadoop.dfs.replication", "3")
       .set("spark.hadoop.dfs.block.size", "10048576")
-    //.setMaster("spark://spark-master:7077")
-    //.set("spark.locality.wait", "900000")
-    //.set("spark.executors.cores", "2")
     val sc = new SparkContext(conf)
 
     println("\nWriting\n")
