@@ -24,13 +24,13 @@ case object HDFSWrite {
 
     try {
 
-      val size = 5
-      val points = Utils.generateData(size);
+      val size = 100
+      val points : ListBuffer[(Double, Double)] = Utils.generateData(size);
 
       println("Data sample:")
       println(points.take(5).mkString(", "))
 
-      /* val hdfsIp = "hdfs://172.28.1.2:8020"
+       val hdfsIp = "hdfs://172.28.1.2:8020"
       val replicationFactor = 3
       val fs = setUpHDFS(hdfsIp, replicationFactor)
 
@@ -41,7 +41,7 @@ case object HDFSWrite {
     } catch {
       case ex: org.apache.hadoop.mapred.FileAlreadyExistsException =>
         println("File1 already exists!")
-    */ }
+    }
 
   }
 

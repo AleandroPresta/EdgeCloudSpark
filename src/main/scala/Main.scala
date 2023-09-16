@@ -29,7 +29,7 @@ case object Main {
     val executorsCores = "1"
     val dfsReplication = "2"
     val userName = "aleandro"
-    val fileName = "edgeData2.txt"
+    val fileName = "points.txt"
 
     // Print the parameters
     println(s"hdfsIp: $hdfsIp")
@@ -53,11 +53,13 @@ case object Main {
     val sc = new SparkContext(conf)
     sc.addSparkListener(new TaskStartListener())
 
+    val data: RDD[(Double, Double)] = readFromHDFS(sc = sc, hdfsPrefix = hdfsPrefix, userName = userName, fileName = fileName)
+
+    printFirstElement(data)
+
     println("\nEdge Phase\n")
 
-    val data: RDD[String] = readFromHDFS(sc = sc, hdfsPrefix = hdfsPrefix, userName = userName, fileName = fileName)
-
-    // Perform Edge operations
+    /*// Perform Edge operations
     val edgeResults: Array[Int] = edgePhase(data)
 
     println("\nCloud Phase\n")
@@ -67,20 +69,50 @@ case object Main {
 
     val cloudData: Array[Array[Int]] = cloudPhase(cloudRDD)
 
-    println("\nFinish!\n")
+    println("\nFinish!\n") */
 
   }
 
   def readFromHDFS(sc: SparkContext, hdfsPrefix: String, userName: String, fileName: String) = {
     // Read from HDFS
     println(s"\nReading data from HDFS at $hdfsPrefix\n")
-    val data = sc.textFile(hdfsPrefix + "/user/" + userName + "/" + fileName)
+    val data: RDD[String] = sc.textFile(hdfsPrefix + "/user/" + userName + "/" + fileName)
+
+    val dataElaborated = transform(data)
 
     // Print the number of partitions
     val numPartitions = data.getNumPartitions
     println(s"\nnumPartitions: $numPartitions\n")
 
-    data
+    dataElaborated
+  }
+
+  def printFirstElement(data: RDD[(Double, Double)]): Unit = {
+    val firstElement: (Double, Double) = data.first()
+
+    val (element1, element2) = firstElement
+
+    println(s"First Element: ($element1, $element2)")
+  }
+
+  def transform(inputRDD: RDD[String]): RDD[(Double, Double)] = {
+    // Use map transformation to parse each input string and create (Double, Double) pairs
+    val transformedRDD = inputRDD.map { inputString =>
+      // Remove parentheses and split the string by comma
+      val values = inputString.stripPrefix("(").stripSuffix(")").split(",")
+
+      // Ensure that there are exactly two values and parse them as Doubles
+      if (values.length == 2) {
+        val x = values(0).trim.toDouble
+        val y = values(1).trim.toDouble
+        (x, y)
+      } else {
+        // If the format is incorrect, you can handle it as needed, e.g., by returning a default value or logging an error.
+        (0.0, 0.0) // Default values if the format is incorrect
+      }
+    }
+
+    transformedRDD
   }
 
   def edgePhase(data: RDD[String]) = {
