@@ -1,5 +1,7 @@
 package com.example
 
+import clustering.KMeans
+
 import org.apache.spark.rdd.RDD
 import org.apache.spark.scheduler.{SparkListener, SparkListenerJobStart, SparkListenerTaskStart}
 import org.apache.spark.{SparkConf, SparkContext}
@@ -29,7 +31,10 @@ case object Main {
     val executorsCores = "1"
     val dfsReplication = "2"
     val userName = "aleandro"
-    val fileName = "points.txt"
+    val fileName = "points5.txt"
+
+    val k = 2
+    val maxIterations = 10
 
     // Print the parameters
     println(s"hdfsIp: $hdfsIp")
@@ -55,22 +60,61 @@ case object Main {
 
     val data: RDD[(Double, Double)] = readFromHDFS(sc = sc, hdfsPrefix = hdfsPrefix, userName = userName, fileName = fileName)
 
-    printFirstElement(data)
+    // printFirstElement(data)
+    val kmeans: KMeans = KMeans(data, k, maxIterations)
+    println("Initializing centroids")
+    kmeans.initializeCentroids()
+    // println("\nCentroids before iteration\n")
+    // println(kmeans.centroids)
 
     println("\nEdge Phase\n")
 
-    /*// Perform Edge operations
-    val edgeResults: Array[Int] = edgePhase(data)
+    // Perform Edge operations
+    // Int, (Double, Double) indica la coppia id_centroide, (x_punto, y_punto)
+    val edgeResults: Array[(Int, (Double, Double))] = edgePhase(data, kmeans).collect()
+
+    // println("\nResults of the edge phase\n")
+    // edgeResults.collect().foreach(println)
 
     println("\nCloud Phase\n")
 
     // Create RDD with the results of the Edge phase but with the cloud node as preferred location
-    val cloudRDD: RDD[Array[Int]] = createRDD(sc = sc, data = edgeResults, nodes = cloudNodes)
+    val cloudRDD: RDD[Array[(Int, (Double, Double))]] = createRDD(sc = sc, data = edgeResults, nodes = cloudNodes)
 
-    val cloudData: Array[Array[Int]] = cloudPhase(cloudRDD)
+    cloudPhase(cloudRDD, kmeans)
+    // println("\nCentroids after iteration\n")
+    // println(kmeans.centroids)
 
-    println("\nFinish!\n") */
+    println("\nFinish!\n")
 
+  }
+
+  def createRDD(sc: SparkContext, data: Array[(Int, (Double, Double))], nodes: Seq[String]): RDD[Array[(Int, (Double, Double))]] = {
+
+    // Create RDD with preferred locations
+    // Per usare le preferred locations bisogna accoppiare l'array di punti e cluster associato con le preferred locations
+    val tuple: (Array[(Int, (Double, Double))], Seq[String]) = (data, nodes)
+    // Per usare makeRDD bisogna incapsulare questo insieme di tuple in una sequenza
+    val sequence: Seq[(Array[(Int, (Double, Double))], Seq[String])] = Seq(tuple)
+
+    val rdd: RDD[Array[(Int, (Double, Double))]] = sc.makeRDD(sequence)
+
+    val numSplits = rdd.getNumPartitions
+
+    // Print job information
+    val statusTracker = sc.statusTracker
+    val info = statusTracker.getJobInfo(0)
+    println(s"\n${info.mkString(", ")}")
+
+    // Print preferred locations
+    println(s"\nPrinting preferred locations of RDD")
+    for (partitionId <- 0 until numSplits) {
+      val preferredLocations = rdd.preferredLocations(rdd.partitions(partitionId))
+      val p_id_print = partitionId + 1 //è necessario incrementare di 1 il partitionID per stampare il numero corretto
+      println(s"\nPartition $p_id_print / $numSplits, preferred locations: ${preferredLocations}\n")
+    }
+
+    rdd
   }
 
   def readFromHDFS(sc: SparkContext, hdfsPrefix: String, userName: String, fileName: String) = {
@@ -115,50 +159,21 @@ case object Main {
     transformedRDD
   }
 
-  def edgePhase(data: RDD[String]) = {
-    data.map(_ + 1)
+  def edgePhase(data: RDD[(Double, Double)], kmeans: KMeans): RDD[(Int, (Double, Double))] = {
 
-    val edgeResults = data.collect().map(_.toInt)
+    val assignedPoints = kmeans.assignToCentroids()
 
-    edgeResults
+    assignedPoints
   }
 
-  def createRDD(sc: SparkContext, data: Array[Int], nodes: Seq[String]) = {
-
-    // Create RDD with preferred locations
-    val tuple: (Array[Int], Seq[String]) = (data, nodes)
-    val sequence: Seq[(Array[Int], Seq[String])] = Seq(tuple)
-
-    val rdd = sc.makeRDD(sequence)
-
-    val numSplits = rdd.getNumPartitions
-
-    // Print job information
-    val statusTracker = sc.statusTracker
-    val info = statusTracker.getJobInfo(0)
-    println(s"\n${info.mkString(", ")}")
-
-    // Print preferred locations
-    println(s"\nPrinting preferred locations of RDD")
-    for (partitionId <- 0 until numSplits) {
-      val preferredLocations = rdd.preferredLocations(rdd.partitions(partitionId))
-      val p_id_print = partitionId + 1 //è necessario incrementare di 1 il partitionID per stampare il numero corretto
-      println(s"\nPartition $p_id_print / $numSplits, preferred locations: ${preferredLocations}\n")
-    }
-
-    rdd
-  }
-
-  def cloudPhase(data: RDD[Array[Int]]) = {
+  def cloudPhase(data: RDD[Array[(Int, (Double, Double))]], kmeans: KMeans) = {
     // Cloud operations
-    val cloudResult = data.map(
-      array => array.map(_ - 3)
-    )
 
-    // Collect the results
-    val cloudData = cloudResult.collect()
+    // Trasformare RDD[Array[(Int, (Double, Double))]] in RDD[(Int, (Double, Double))])
+    val outputRDD: RDD[(Int, (Double, Double))] = data.flatMap(array => array)
 
-    cloudData
+    kmeans.updateCentroids(outputRDD)
+
   }
 
 }

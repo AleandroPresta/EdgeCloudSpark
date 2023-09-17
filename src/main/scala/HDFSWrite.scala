@@ -24,7 +24,7 @@ case object HDFSWrite {
 
     try {
 
-      val size = 100
+      val size = 5
       val points : ListBuffer[(Double, Double)] = Utils.generateData(size);
 
       println("Data sample:")
@@ -34,7 +34,7 @@ case object HDFSWrite {
       val replicationFactor = 3
       val fs = setUpHDFS(hdfsIp, replicationFactor)
 
-      val fileName = "points.txt"
+      val fileName = "points5.txt"
       val userName = "aleandro"
       saveFile(points = points, fs = fs, hdfsIp = hdfsIp, fileName = fileName, userName = userName)
 

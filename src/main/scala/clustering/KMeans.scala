@@ -1,72 +1,55 @@
 package com.example
 package clustering
 
+import org.apache.spark.rdd.RDD
+
 import scala.collection.mutable.ListBuffer
 import scala.util.Random
 
-class KMeans(data: ListBuffer[(Double, Double)], k: Int, maxIterations: Int) {
-  // Number of data points
-  private val numDataPoints = data.length
+case class KMeans(data: RDD[(Double, Double)], k: Int, maxIterations: Int) {
 
-  // Initialize centroids with random values
-  private var centroids: ListBuffer[(Double, Double)] = initializeCentroids()
+  var centroids: Array[(Double, Double)] = Array.empty
 
-  // Array to store cluster assignments for each data point
-  private var clusters: Array[Int] = Array.fill(numDataPoints)(-1)
-
-  // Function to initialize centroids with random values
-  def initializeCentroids(): ListBuffer[(Double, Double)] = {
-    val random = new Random()
-    ListBuffer.fill(k)((random.nextDouble(), random.nextDouble()))
+  // Initialize centroids randomly
+  def initializeCentroids(): Unit = {
+    centroids = data.takeSample(withReplacement = false, k, Random.nextLong())
   }
 
-  // Function to compute Euclidean distance between two points
-  def euclideanDistance(point1: (Double, Double), point2: (Double, Double)): Double = {
-    math.sqrt(math.pow(point1._1 - point2._1, 2) + math.pow(point1._2 - point2._2, 2))
-  }
-
-  // Assign each data point to the closest cluster centroid
-  // Edge Method
-  def assignToClusters(): Unit = {
-    for (i <- 0 until numDataPoints) {
-      val point = data(i)
-      var minDistance = Double.MaxValue
-      var closestCluster = -1
-
-      for (j <- 0 until k) {
-        val distance = euclideanDistance(point, centroids(j))
-        if (distance < minDistance) {
-          minDistance = distance
-          closestCluster = j
-        }
+  // Assign each point to the nearest centroid
+  def assignToCentroids(): RDD[(Int, (Double, Double))] = {
+    data.map { point =>
+      val (x, y) = point
+      val closestCentroid = centroids.minBy { case (cx, cy) =>
+        math.sqrt((x - cx) * (x - cx) + (y - cy) * (y - cy))
       }
-
-      clusters(i) = closestCluster
+      (centroids.indexOf(closestCentroid), point)
     }
   }
 
-  // Update the centroids based on the mean of data points in each cluster
-  // Cloud method
-  def updateCentroids(): Unit = {
-    for (cluster <- 0 until k) {
-      val clusterPoints = data.zip(clusters).collect { case (point, c) if c == cluster => point }
-      if (clusterPoints.nonEmpty) {
-        // Calculate the mean of x and y values separately for each cluster
-        val (xSum, ySum) = clusterPoints.foldLeft((0.0, 0.0)) { case ((sumX, sumY), (x, y)) =>
-          (sumX + x, sumY + y)
+  // Update centroids based on the assigned points
+  def updateCentroids(assignedPoints: RDD[(Int, (Double, Double))]): Unit = {
+    centroids = assignedPoints
+      .groupByKey()
+      .mapValues { points =>
+        val (sumX, sumY) = points.foldLeft((0.0, 0.0)) {
+          case ((accX, accY), (x, y)) => (accX + x, accY + y)
         }
-        centroids(cluster) = (xSum / clusterPoints.length, ySum / clusterPoints.length)
+        (sumX / points.size, sumY / points.size)
       }
-    }
+      .collect()
+      .sortBy(_._1)
+      .map(_._2)
   }
 
-  // Fit the K-Means model and return the cluster assignments for each data point
-  def fit(): Array[Int] = {
+  // Run K-Means clustering
+  def run(): Array[(Double, Double)] = {
+    initializeCentroids()
+
     for (iteration <- 1 to maxIterations) {
-      assignToClusters()
-      updateCentroids()
+      val assignedPoints = assignToCentroids()
+      updateCentroids(assignedPoints)
     }
-    clusters
+    centroids
   }
 }
 
