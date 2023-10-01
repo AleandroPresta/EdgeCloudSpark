@@ -31,7 +31,7 @@ case object Main {
     val executorsCores = "1"
     val dfsReplication = "2"
     val userName = "aleandro"
-    val fileName = "points5.txt"
+    val fileName = "points.txt"
 
     val k = 2
     val maxIterations = 10
@@ -64,28 +64,42 @@ case object Main {
     val kmeans: KMeans = KMeans(data, k, maxIterations)
     println("Initializing centroids")
     kmeans.initializeCentroids()
+
+    val initialCentroids : Array[(Double, Double)] = kmeans.centroids
     // println("\nCentroids before iteration\n")
     // println(kmeans.centroids)
 
-    println("\nEdge Phase\n")
+    for (i <- 1 to maxIterations) {
+      println(s"Iteration $i")
+      println("\nEdge Phase\n")
 
-    // Perform Edge operations
-    // Int, (Double, Double) indica la coppia id_centroide, (x_punto, y_punto)
-    val edgeResults: Array[(Int, (Double, Double))] = edgePhase(data, kmeans).collect()
+      // Perform Edge operations
+      // Int, (Double, Double) indica la coppia id_centroide, (x_punto, y_punto)
+      val edgeResults: Array[(Int, (Double, Double))] = edgePhase(data, kmeans).collect()
 
-    // println("\nResults of the edge phase\n")
-    // edgeResults.collect().foreach(println)
+      // println("\nResults of the edge phase\n")
+      // edgeResults.collect().foreach(println)
 
-    println("\nCloud Phase\n")
+      println("\nCloud Phase\n")
 
-    // Create RDD with the results of the Edge phase but with the cloud node as preferred location
-    val cloudRDD: RDD[Array[(Int, (Double, Double))]] = createRDD(sc = sc, data = edgeResults, nodes = cloudNodes)
+      // Create RDD with the results of the Edge phase but with the cloud node as preferred location
+      val cloudRDD: RDD[Array[(Int, (Double, Double))]] = createRDD(sc = sc, data = edgeResults, nodes = cloudNodes)
 
-    cloudPhase(cloudRDD, kmeans)
-    // println("\nCentroids after iteration\n")
-    // println(kmeans.centroids)
+      cloudPhase(cloudRDD, kmeans)
+      println(s"\nCentroids after iteration ${i}\n")
+      kmeans.centroids.foreach(println)
 
-    println("\nFinish!\n")
+    }
+
+    println("\n-------------------------------------Finish!-------------------------------------\n")
+
+    println("Data points:")
+    data.collect().foreach(println)
+    println("Initial centroids:")
+    initialCentroids.foreach(println)
+    val centroidsEc : Array[(Double, Double)] = kmeans.centroids
+    println("Centroids:")
+    centroidsEc.foreach(println)
 
   }
 

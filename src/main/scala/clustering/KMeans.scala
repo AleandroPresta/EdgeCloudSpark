@@ -46,8 +46,8 @@ case class KMeans(data: RDD[(Double, Double)], k: Int, maxIterations: Int) {
     initializeCentroids()
 
     for (iteration <- 1 to maxIterations) {
-      val assignedPoints = assignToCentroids()
-      updateCentroids(assignedPoints)
+      val assignedPoints = assignToCentroids() // Operazione Edge
+      updateCentroids(assignedPoints) // Operazione Cloud
     }
     centroids
   }
