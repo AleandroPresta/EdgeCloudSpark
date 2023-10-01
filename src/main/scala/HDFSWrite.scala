@@ -5,6 +5,8 @@ import org.apache.hadoop.fs.{FileSystem, Path}
 import org.apache.spark.{SparkConf, SparkContext}
 import clustering.Utils
 
+import com.example.data.DatasetReader
+
 import scala.collection.mutable.ListBuffer
 import scala.util.Random
 
@@ -24,8 +26,8 @@ case object HDFSWrite {
 
     try {
 
-      val size = 5
-      val points : ListBuffer[(Double, Double)] = Utils.generateData(size);
+      val csvFilePath = "/home/aleandro/IdeaProjects/EdgeCloudSpark/src/main/scala/data/dataset.csv"
+      val points : ListBuffer[(Double, Double)] = DatasetReader.readData(csvFilePath)
 
       println("Data sample:")
       println(points.take(5).mkString(", "))
@@ -34,7 +36,7 @@ case object HDFSWrite {
       val replicationFactor = 3
       val fs = setUpHDFS(hdfsIp, replicationFactor)
 
-      val fileName = "points5.txt"
+      val fileName = "dataset.txt"
       val userName = "aleandro"
       saveFile(points = points, fs = fs, hdfsIp = hdfsIp, fileName = fileName, userName = userName)
 

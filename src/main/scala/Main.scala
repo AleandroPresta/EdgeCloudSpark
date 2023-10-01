@@ -31,9 +31,9 @@ case object Main {
     val executorsCores = "1"
     val dfsReplication = "2"
     val userName = "aleandro"
-    val fileName = "points.txt"
+    val fileName = "dataset.txt"
 
-    val k = 2
+    val k = 3
     val maxIterations = 10
 
     // Print the parameters
